@@ -134,7 +134,6 @@ a:visited { color: #205caa; }
 .site-title,
 .site-title:hover,
 .site-title:visited {
-  font-family: 'Advent Pro';
   display: block;
   font-size: 26px;
   letter-spacing: -1px;
