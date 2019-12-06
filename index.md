@@ -1,3 +1,7 @@
+---
+layout: page
+---
+
 # University student retention pre-process
 
 The idea of the pre-process is to develop a statistical model that allows us to identify those students which present a high risk of dropping out of university. The statistical model is of course just one small aspect of the whole process. Hence, it is important that not only the IT department be involved. They are a necessary actor, since they retrieve the data that the model needs from the university systems. But it is also crucial that the department in charge of student retention (DSR from now on) be involved: otherwise, there will be no way to target the students identified by the model. So this has to be insisted on when beginning the process.
