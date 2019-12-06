@@ -3,9 +3,12 @@ title: Tutorial: proyecto de retención U de Londres
 email: alberto@foris.ai
 description: "Tutorial: proyecto de retención U de Londres."
 twitter_username: acrendic
-github_username:  lacrendic	# Build settings
+github_username:  lacrendic
+
+# Build settings
 markdown: kramdown
-permalink: pretty	
+permalink: pretty
+
 highlighter: rouge
 kramdown:
   input: GFM
