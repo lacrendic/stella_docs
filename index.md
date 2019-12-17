@@ -91,7 +91,7 @@ As we said before, this is usually the first important checkpoint with the clien
 
 ## Stage III: data consolidation
 
-Once the drop out mark has been calculated and checked by the university, we procceed to construct the consolidated spreadsheet: the spreadsheet to rule them all. So far, in each row it has a unique student record (which come from the base file), plus the drop out mark. Now we have to add more columns that can be valuable and will act as the independent variables for the model (the dependent variable, which we will try to predict, is the drop out mark). 
+Once the drop out mark has been calculated and checked by the university, we procceed to construct the consolidated spreadsheet: the spreadsheet to rule them all. So far, in each row it has a unique student record (which come from the base file), plus the drop out mark. Now we have to add more columns that can be valuable and will act as the independent variables for the model (the dependent variable, which we will try to predict, is the drop out mark). A lot of columns will not be useful, for several reasons: open questions, categorical data with too many categories, data with too many, or information that just has no relation to drop out. We explain everything in detail below.
 
 Recall that in the last step we already did the student consolidation. Hence, when we take one student record from the base file, we know how to identify that record in other files. A useful measure to take now is to understand how much the different files match up. That is, how many unique records from the base file do not match with other files, and viceversa. The following table is an example: 
 
@@ -125,36 +125,68 @@ Every file containing student data needs to be explored and understood. There is
 
  1. It is important to understand what the different columns mean: the header usually helps with this but it is also important to ask the client for a brief explanation of each field. This is an iterative process, so it will be increasingly clarified as we explore the data and ask the university questions. If we don't understand what a column means, we can't verify that it looks OK. Also, it is important to be able to give the model an interpretation, mainly for two reasons. First of all, the client wants to understand, and it won't trust as much a model where the variables used are obscure. Second, the drop out risk that the model computes needs to generate concrete preventative measures, and that cannot be done if we don't understand the variables analyzed by the model.
  2. See the type of data. Is the column storing categorical data? Is it numerical data? Integer or decimal? Is it students' ids? This should be contrasted with the theoretical understanding of the column: if the header is `% of class attendance` and we see text values, or negative values, then we can suspect something is wrong, and ask the university about it. Maybe there was an error and they need to fix the file, maybe we were missing something (for example, grades systems vary from country to country), maybe something was just not clear (for example, negative values represent NaN values).
+ 3. If the data is numerical, make sure it makes sense. 
+ 4. If the data is not numerical, check whether it is categorical or not. Currently, we do not have capability to handle open questions (for more on that, see the Notes), so any column that comes from an open question field is not useful and should not be added to the consolidated spreadsheet, unless the university is willing to categorize it (this option should be discussed, but they are usually not willing to do it). If it is categorical, see how many categories there are: the R scripts can't handle more than 30 categories or so (which makes sense, more than that is probably too specific). That usually happens with information that is very low level: state where the student comes from may be of interest, but the county is too specific. Hence, if there are too many categories, either dismiss the column or cluster the categories. We mention more specific examples below, but to illustrate: if a column indicates the nationality of the student, then it is probably a good idea to cluster it into just two categories: *National* and *Foreigner*, which probably contain most of the relevant information. Also, if some categories contain very few data, then they can probably be clustered into an *Other* category.
 
 **Notes**: there are some TODOs relative to this stage which could be very helpful and save a lot of time. I will mention them superficially now, but it is important at some point to sit down, think about them carefully, and give concrete proposals to improve the process.
 
 - **Data exploration tools**: Fran uses SPSS, a commercial software by IBM, to explore the data (e.g. for each categorical variable, see the values and their frequencies, and maybe homologate some of them). As described above, a lot of data wrangling is done, so deciding on / developing some tools to explore the data could be useful. If SPSS is the right tool, then we can use that. Alternatively, we can construct custom tools (there is already a Python script that has some functionality, something better could be built on top). The point is: as the AI team (and not only the current members), if we really want to be comfortable with Stella, then we need some tools [plus documentation] to manage all the main tasks of a Stella process. Plus, if I may coin a tentative phrase: *tools as documentation*.
+- **Outlier detection**: related to the previous suggestion, but I specify it separately since it is something that needs to be done for almost all columns. If a column has categorical data, it is useful to detect outliers (categories with very few instances) because they can point to errors in the data (categories that don't make sense) or to categories that are so unfrequent that it is better to cluster them as *Other*. If a column is numerical, then it is also useful to detect outliers, since it can also indicate errors in the data. At UdL, for instance, the *Age* column contained negative values, and also values that didn't make sense (students that were less than 10 years old), so those cases were better handled as NaN. Some simple things that the tool could do:
+	- Detect categories with few instances (less than some small %).
+	- Boxplot numerical data so outliers stand out immediately.
+	- Detect numerical values outside of a given range (for example, at UdL grades go from 0 to 10, so anything outside that is probably an error).
+	- Detect categories or values with too high a frequency. For example, at UdL there were a huge number of 0 grades, but that was because a 0 could mean: student did not attend the exam, student dropped out of the class before the exam, or student actually took the exam and got a 0. First two cases were better handled as NaN or missing data.
+- **Handling open questions**: some questions are too open and difficult to handle. But others have shorter / simpler answers, which would be very easy to categorize manually, and I think they should also be easy to categorize automatically, using some pre-trained word embedding (e.g. word2vec). For example, at a UdL survey there was the question *How many siblings do you have?* and it was open, so the answers were of the form:
+	- 2
+	- Two
+	- two
+	- None
+	- 0
+	- only one
+
+  Messy to look at, at first, but with very few categories in the end, and hence probably easy to handle. This connects with a different but important point: universities many times lack what we could call *data culture*. They don't really know how to use and handle data correctly. So an improtant thing that we can do is give them feedback on their data. In this case, for example, we could say to them: *When you have questions such as this one, where the answers are limited to a few categories, you should make the question categorical in the survey*. Or *Try to ask most questions in such a way that they can be answered as categories rather than open texts*. That feedback helps them, and is useful for us:
+	- If we continue working with them, we will have better data to work with in the future. They won't think of this kind of improvement on their own.
+	- It shows the univertity that we have experience working with this kind of project. They are dedicated to education, and need not be experts in data. But we do, since they  hired us precisely to handle all of this. So giving them feedback is a way of validating our expertise.
+
 
 ## Stage IV: univariate analysis
 
+### Running the R script
+
+### Choosing the variables of interest
+
+Once the univariate analysis indicates which variables are more relevant, a subset of them should be chosen to generate a detailed report for the client. Some criteria to choose those variables:
+- They should have prediction power. Variables with the lowest KS values are probably not interesting and should not be included in the report.
+- Everyone's favorite: diversity. Usually, grades have the highest KS values, but it would not be very interesting to analyze only those variables. Hence, it is advisable to include a variety of factors, so hopefully all original files / data origins are represented in the report.
+- "Production" usefulness: once the model is actually deployed, not all variables will be equally helpful. That's where the time component comes into play: the average grade of a period is really not that useful, since we only have it at the end of the period, and by then the student may be on the verge of desertion, or have already dropped out. So it makes sense to include variables that are available early in a period (if they have a good KS value), because they can actually provide early alerts: for example, **the first grade of the period, rather than the last**. 
+- Regarding the previous example, it is usually the last grade of the period that will have a higher KS value, but bear in mind that that can be deceiving. Some variables may seem to have a lot of explanatory power, but only because they are more consequence of desertion than cause. Low % of class assistance, minimum grades or low curricular progress may have only ex-post explanatory power, and be more dependent than independent: of course a student that deserted during a period is going to have low class assistance during that period. This doesn't mean that those kind of variables should be dismissed at once, but it is important to check that they can actually be used to explain desertion.
+- Their relevance should be easy to explain to the client. For example, it is usually better for the model to use a relative ranking for grades than the absolute number (for example, *student is in the bottom 15%* rather than *student got a 2.5 out of 10*), but a ranking is harder for the client to handle.
+
+### Generating the report
+
+### Discussing with the university
+
+Once the report is completed, it must be checked to make sure it makes sense. It seems  strange that students that do well in the first grade of the period turn out to drop out in higher proportion than the others. It is not impossible, but before discussing the report with the client, we must analyze it ourselves, and everything that seems weird must be checked and, in case it looks error-free to us, make a point of discussing it with the university: could there be errors in the data? Is there some phenomenon that we are not aware of? Maybe students that are doing well drop out more because they get good offers from other universities, who knows.
+
+Also, before discussing the report with the university, we need to draw some general interpretation from it, and understand what the data is saying. So we need to go from chart to chart, try to cluster the results and data in a few general conclusions. When doing this, consider the following:
+- Different charts may be speaking about the same phenomenon and need to be clustered in the interpretation. For example, 
+- Refer to past experiences, since projects tend to have many similarities (e.g. grades are always relevant).
+
+Once we feel that we understand the report well, and are comfortable with the conclusions that arise from it, a meeting has to be held with the university, which constitutes the **third checkpoint**. The main purpose of the meeting is to explain the work done so far. So we show them the report, explain how to read the charts, and tell them the conclusions that we derive from the univariate analysis. For example, in the case of UdL the conclusions were something like: 
+
+> The main predictor of desertion is academic performance: level of curricular progress, number of failed classes so far and, especially, grades. Even early in the period, with the first batch of grades, we can have a rough idea of which students are at risk. We also note that students that enroll at an older age (over 19) have a lower desertion risk. Finally, there are a number of factors that show a smaller but still significant effect: library activity, sex, and the psychological evaluation done at admission all are relevant to predicting drop out likelihood.
+
+All of this conclusions, of course, must have their counterpart and be supported by the different charts of the report, and our exploration of the data, so they will have validity in the eyes of the client. Also, there may be variables that they are interested in but we dismissed: make that clear to them, and offer to complement the report with any variables that they want.
+
+After explaining the report in detail, and clearing up the client's questions, there are two possible courses of action, which must be discussed with the university. It is they that ultimately decide. The first option is to go deeper into the univariate analysis: look at the data again and in more detail, get more refined charts and categories, maybe categorize some of the open questions. Some universities ascribe a lot of value to this sort of analysis, since it is information that they don't usually have. The second option is to go straight into the multivariate analysis: some clients will be anxious for results (a final model) and will prefer this alternative.
 
 
+**Notes**: there are some TODOs relative to this stage which could be very helpful and save a lot of time. I will mention them superficially now, but it is important at some point to sit down, think about them carefully, and give concrete proposals to improve the process.
 
-No olvidar:
-- indicador de si cruza o no puede ser interesante
-- info puede ser inutil para el modelo porque es inutil, o porque no tenemos herramientas para analizarla (preguntas abeirtas por ejemplo)
-- no hay forma de analizar respuestas abiertas hoy (ofrecer que la universidad las agrupe)
-- nacionalidad, comuna, y otros deben agruparse
-- cuidado con registros de asistencia, notas o avance porque pueden ser más consecuencia que causa
-- componente temporal de información (columnas de primer mes, o C1 y A1, que permite predecir temprano en el ciclo)
-- valores normalizados (inflación, número variable de clases para asistencia)
-- reinscripcion debe ser categórica
-- categorizar variables para informe de análisis univariado
-- herramientas de exploración de datos
-- herramientas de generación de reportes
-- que las universidades nos vean como expertos es importante (darles información que no tengan, por ejemplo)
-- despues de checkpoint analisis univariado, podemos seguir profundizando en eso o proceder al multivariado
-- dejar claro además que ellos nos pueden pedir agregar cosas al analisis univariado
-- proponer mejoras: no registros manuales, no preguntas tan abiertas
-- info demasiado desmenuzada (comuna en vez de región) en general no sirve, demasiadas categorías, R tiene límite de categorías
-- mejor herramienta para detectar outliers
-
-Para mejorar el documento:
-- darle a cada etapa de los docs más estructura: por ejemplo Objetivo + Entregable + Procedimiento + Pro Tips + Monitos + Reunión
-- definir mejor algunas cosas: por ejemplo un nombre reconocible para la spreadsheet to rule them all, o para los "info files"
-- explicar qué es UdL y por qué lo uso tanto de ejemplo, que es el caso que se tomó de base para estos docs
+- **Process standards**: I'm not sure about this, but I think maybe the Stella process could be standardized a bit more. For example, as we describe above, at the third checkpoint (the meeting to explain univariate analysis) there are two courses of action, and it is mainly the university that decides which one to choose. The first one requires more man-hours and implies a longer overall process, while the second doesn't. That uncertainty makes it harder to predict the effort required by a project, which could be problematic for the planning process in Foris.
+- **Report generation tools**: we already described what kind of reporting we need to generate at this stage. Most of it is pretty standard, so it is possible to automatize a large part of the work and save a lot of time for future projects. This TODO will probably be repeated for all stages of the process where some reporting needs to be done. Some basic things that the tool could do (there is already a Python script that covers the first two points decently, and the third and fourth points partially, but it should be improved and made more portable as a tool):
+	- Categorize numerical data (very important, otherwise is difficult to show the impact of numerical data in a readable and interpretable way).
+	- Generate the charts and tables that are traditionally used for univariate analysis.
+	- Include a friendly way of previewing charts / tables and do some fixing / prettifying to them (e.g. fix the label placement), since a standard tool will probably create display problems for some charts.
+	- Allow for some light customization of the charts / tables. For example, for some fields (categorical data) we may want to print the categories in order of most frequent to less frequent, for other fields (categorized numerical data) we will want to print / plot the categories in numerical ascending order, and for both cases there may be exceptions.
+	- Generate a general report that groups all charts / data into one document (a PDF, or a presentation).
